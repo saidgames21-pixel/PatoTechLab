@@ -1,78 +1,58 @@
 # PatoTechLab · Bitácora
 
-App de escritorio/celular para administrar pedidos, consumibles, finanzas y métricas de PatoTechLab.
+App para administrar pedidos, consumibles, finanzas y métricas de PatoTechLab.
 
-## ⚠️ Importante sobre tus datos
+## ☁️ Cómo funciona el guardado (Firebase)
 
-Esta versión guarda todo en el **localStorage de tu navegador** (a diferencia de la versión dentro de Claude, que usaba su propio almacenamiento). Eso significa:
+Esta versión guarda tus datos en **Firebase (Firestore)**, no en el navegador. Eso significa:
 
-- Los datos se quedan en el navegador y dispositivo donde la uses. Si la abres desde otro celular o computadora, vas a ver una app vacía (o con los datos de ejemplo).
-- Si borras el caché/datos de navegación de tu navegador, se pierden.
-- Usa el botón **"Respaldo"** dentro de la app seguido de **"Restaurar"** para mover tus datos de un dispositivo/navegador a otro, o como copia de seguridad periódica.
+- Inicias sesión **una sola vez por dispositivo** (con un correo y contraseña que tú eliges — se crea la primera vez que entras).
+- Después de ese primer inicio de sesión, la app recuerda que eres tú en ese navegador, así que no te lo vuelve a pedir.
+- Todo lo que agregues, edites o borres se guarda solo, automáticamente, y aparece igual sin importar desde qué celular o computadora entres (mientras inicies sesión con el mismo correo).
+
+### ⚠️ Muy importante: activa las reglas de seguridad
+
+Por default, cualquiera con tus llaves de Firebase (que están en `src/firebaseConfig.js`, y **no son secretas**) podría intentar leer la base de datos si no configuras las reglas. Para que **solo tú** puedas leer/escribir tus propios datos:
+
+1. Ve a [console.firebase.google.com](https://console.firebase.google.com) → tu proyecto → **Firestore Database** → pestaña **Reglas** (Rules).
+2. Borra lo que haya y pega esto:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+```
+
+3. Dale **Publicar** (Publish).
+
+Esto dice: "solo un usuario que inició sesión puede leer/escribir el documento que tiene su mismo ID" — nadie más puede ver tus pedidos ni tus finanzas, ni siquiera con las llaves públicas.
 
 ## Requisitos
 
-- [Node.js](https://nodejs.org/) versión 18 o más reciente instalado en tu computadora.
+- [Node.js](https://nodejs.org/) 18 o más reciente.
 - Una cuenta de [GitHub](https://github.com).
-- [Git](https://git-scm.com/downloads) instalado.
+- Un proyecto de [Firebase](https://console.firebase.google.com) con **Firestore** y **Authentication (Email/Password)** activados (ya lo tienes si seguiste los pasos con Claude).
 
-## Cómo probarla en tu computadora (opcional, antes de publicar)
-
-Abre una terminal dentro de esta carpeta y corre:
+## Cómo probarla en tu computadora
 
 ```bash
 npm install
 npm run dev
 ```
 
-Esto abre la app en `http://localhost:5173` para que la veas funcionando antes de publicarla.
+Abre `http://localhost:5173`, crea tu cuenta la primera vez (correo + contraseña), y ya puedes usarla.
 
-## Cómo publicarla en GitHub Pages
+## Cómo publicar cambios nuevos
 
-### 1. Crea el repositorio en GitHub
+Cada vez que Claude te dé un `App.jsx` actualizado:
 
-Entra a [github.com/new](https://github.com/new), ponle un nombre (ej. `patotech-bitacora`) y créalo **vacío** (sin README, sin .gitignore — ya los trae esta carpeta).
-
-### 2. Sube el código
-
-Dentro de esta carpeta, en la terminal:
-
-```bash
-git init
-git add .
-git commit -m "Primera versión de la bitácora"
-git branch -M main
-git remote add origin https://github.com/TU-USUARIO/TU-REPOSITORIO.git
-git push -u origin main
-```
-
-Cambia `TU-USUARIO` y `TU-REPOSITORIO` por los tuyos reales.
-
-### 3. Instala las dependencias y publica
-
-```bash
-npm install
-npm run deploy
-```
-
-Esto construye la app y la sube a una rama especial llamada `gh-pages` dentro de tu mismo repositorio.
-
-### 4. Activa GitHub Pages
-
-En GitHub, entra a tu repositorio → **Settings** → **Pages** (en el menú de la izquierda). En "Build and deployment", en la sección "Branch", selecciona `gh-pages` y guarda.
-
-Después de uno o dos minutos, tu app va a estar disponible en:
-
-```
-https://TU-USUARIO.github.io/TU-REPOSITORIO/
-```
-
-### 5. Cada vez que quieras actualizarla
-
-Si más adelante le pides más cambios a Claude y te da un `App.jsx` nuevo:
-
-1. Reemplaza el archivo `src/App.jsx` de esta carpeta con el nuevo.
-2. Corre de nuevo:
+1. Reemplaza `src/App.jsx` con el nuevo archivo.
+2. En la terminal, dentro de esta carpeta:
 
 ```bash
 git add .
@@ -81,15 +61,24 @@ git push
 npm run deploy
 ```
 
+Espera 1-2 minutos y actualiza la página de tu app.
+
 ## Estructura del proyecto
 
 ```
 patotech-app/
-├── index.html          ← HTML base
-├── package.json         ← dependencias y scripts
-├── vite.config.js       ← configuración de Vite
+├── index.html
+├── package.json
+├── vite.config.js
 ├── src/
 │   ├── main.jsx              ← punto de entrada
-│   ├── storagePolyfill.js    ← hace que window.storage funcione con localStorage
-│   └── App.jsx                ← tu app completa (pedidos, consumibles, finanzas, métricas)
+│   ├── firebaseConfig.js     ← llaves de tu proyecto de Firebase
+│   ├── firebase.js           ← inicializa Firebase (auth + Firestore)
+│   ├── firebaseStorage.js    ← hace que window.storage funcione con Firestore
+│   ├── AuthGate.jsx          ← pantalla de inicio de sesión / registro
+│   └── App.jsx               ← tu app completa (pedidos, consumibles, finanzas, métricas)
 ```
+
+## Si algún día quieres agregar más gente a tu cuenta
+
+Ahora mismo, cualquiera que sepa tu correo y contraseña puede entrar a los mismos datos (por ejemplo, si quieres que un empleado también anote pedidos). Si más adelante quieres varias cuentas independientes o permisos distintos, dile a Claude — es un cambio adicional a las reglas y la estructura de datos.
